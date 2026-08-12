@@ -1,60 +1,78 @@
-# =======================================================================
-# Advanced Graph Layout Editor (Direct Replacement for ggm::plotGraph)
-#
-# Acknowledgments: Developed in collaboration with Google Gemini AI (2026).
-# =======================================================================
-
 #' Advanced Graph Layout Editor for Mixed Graphs
 #'
 #' @description
-#' An interactive replacement for [ggm::plotGraph()] using
-#' `Shiny` and `visNetwork`.
+#' An interactive replacement for [ggm::plotGraph] using
+#' `shiny` and `visNetwork`.
 #' Allows dynamic node repositioning, handles multiple edge types,
 #' and outputs node coordinates.
 #'
-#' @param ggm_matrix A square adjacency matrix, a graphNEL object, an igraph object, or a descriptive character vector.
+#' @param ggm_matrix
+#' * an adjacency matrix for mixed graphs,
+#' * an `igraph` object, or
+#' * a descriptive character vector.
 #' @param dashed Logical. If `TRUE` (default), bidirected edges `<->`
 #' are drawn as dashed lines.
 #' @param bidirected_roundness Numeric. Curvature of bidirected edges
 #' when multiple edges are present. Default is `0.25`.
-#'
-#' @return A matrix of `X` and `Y`coordinates for each node,
+#' @param Viewer, character string specifying where to display the
+#'  Shiny application.  Valid options are `"Rstudio"` (to open it
+#'  in a native internal window), or `"browser"` (to open it
+#'  in the default web browser). If not specified, it
+#'  automatically detects the environment, defaulting to`"Rstudio"`
+#'  inside RStudio and `"browser"` elsewhere.
+#' @return A matrix of `X` and `Y` coordinates for each node,
 #' returned after terminating the Shiny application.
 #'
 #' @importFrom shiny fluidPage sidebarLayout sidebarPanel mainPanel titlePanel p br tags actionButton observeEvent stopApp runApp shinyApp
-#' @importFrom visNetwork visNetworkOutput renderVisNetwork visNetwork visNodes visNetworkProxy visGetPositions \%>\%
+#' @importFrom visNetwork visNetworkOutput renderVisNetwork visNetwork visNodes visNetworkProxy visGetPositions visEdges
 #'
-#'
+#'@author Giovanni M. Marchetti in collaboration with
+#'Google Gemini AI (2026).
 #' @examples
 #' \dontrun{
 #' if (interactive()) {
-#'   ag <- makeMG(ug=UG(~y0*y1), dg=DAG(y4~y2, y2~y1), bg=UG(~y2*y3+y3*y4))
-#'   coords <- graphLayout(ag)
+#'   amat <- matrix(c(0,1,0, 0,0,1, 0,0,0), 3, 3,
+#'                  dimnames = list(c("A","B","C"), c("A","B","C")))
+#'   coords <- graphLayout(amat)
 #'   print(coords)
 #' }
+#'
+#' # Generating the adjacency matrix from a vector and plotting
+#' exvec <- c(
+#'   "b", 1, 2, "b", 1, 14, "a", 9, 8, "l", 9, 11,
+#'   "a", 10, 8, "a", 11, 2, "a", 11, 9, "a", 11, 10,
+#'   "a", 12, 1, "b", 12, 14, "a", 13, 10, "a", 13, 12
+#' )
+#' graphLayout(exvec)
+#'
+#' # Plotting from a direct adjacency matrix
+#' amat <- matrix(c(0, 11, 0, 0, 10, 0, 100, 0, 0, 100, 0, 1, 0, 0, 1, 0), 4, 4)
+#' graphLayout(amat)
+#'
+#' # A graph with double and triple edges
+#' G <- structure(c(
+#'     0, 101, 0, 0, 100, 0, 100, 100, 0, 100, 0, 100, 0, 111, 100, 0),
+#'      dim = c(4L, 4L),
+#'      dimnames = list(c("X", "Z", "Y", "W"), c("X", "Z", "Y", "W")))
+#' graphLayout(G)
+#'
+#' # A graph with 4 edges between two nodes
+#' G4 <- matrix(0, 2, 2)
+#' G4[1, 2] <- 111
+#' G4[2, 1] <- 111
+#' graphLayout(G4)
 #' }
 #' @export
-graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) {
-  # 1. CONTROLLO DIPENDENZE (Pacchetti in 'Suggests')
-  missing_pkgs <- c()
-  if (!requireNamespace("shiny", quietly = TRUE)) missing_pkgs <- c(missing_pkgs, "shiny")
-  if (!requireNamespace("visNetwork", quietly = TRUE)) missing_pkgs <- c(missing_pkgs, "visNetwork")
 
-  if (length(missing_pkgs) > 0) {
-    stop(
-      "The following package(s) are required for graphLayout: ",
-      paste(missing_pkgs, collapse = ", "), ".\n",
-      "Please install them by running: install.packages(",
-      paste0("'", missing_pkgs, "'", collapse = ", "), ")",
-      call. = FALSE
-    )
-  }
+graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, Viewer = if (Sys.getenv("RSTUDIO") == "1") "Rstudio" else "browser") {
+  # 0. CONTROLLO DI SICUREZZA SULL'INPUT DEL VIEWER
+  # Il controllo accetta solo queste due opzioni e gestisce le abbreviazioni
+  Viewer <- match.arg(Viewer, choices = c("Rstudio", "browser"))
 
-  # 2. NORMALIZZAZIONE DELL'INPUT (Integrazione di grMAT)
-  # Qui convertiamo graphNEL, igraph o vettori in una matrice standard di ggm
-  ggm_matrix <- grMAT(ggm_matrix)
+  # 1. NORMALIZZAZIONE DELL'INPUT
+  ggm_matrix <- grMAT2(ggm_matrix)
 
-  # 3. LOGICA DI ESTRAZIONE DEL GRAFO (Il  codice originale)
+  # 2. ESTRAZIONE DEI NODI
   n_nodes <- nrow(ggm_matrix)
   node_names <- rownames(ggm_matrix)
   if (is.null(node_names)) {
@@ -64,7 +82,8 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
   nodes_converted <- data.frame(
     id = 1:n_nodes,
     label = node_names,
-    shape = "circle",
+    shape = "dot",
+    size = 10,
     color = "#97C2FC",
     stringsAsFactors = FALSE
   )
@@ -72,9 +91,7 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
   edges_list <- list()
   edge_counter <- 1
 
-  # -------------------------------------------------------------------
-  # PRELIMINARY PHASE: Calculate edge multiplicity per node pair
-  # -------------------------------------------------------------------
+  # 3. CALCOLO DELLA MOLTEPLICITÀ DEGLI ARCHI
   edge_count_matrix <- matrix(0, nrow = n_nodes, ncol = n_nodes)
 
   for (i in 1:(n_nodes - 1)) {
@@ -94,9 +111,7 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
     }
   }
 
-  # -------------------------------------------------------------------
-  # PHASE 1: Extract DIRECTED EDGES
-  # -------------------------------------------------------------------
+  # 4. ESTRAZIONE ARCHI ORIENTATI
   for (i in 1:n_nodes) {
     for (j in 1:n_nodes) {
       if (i == j) next
@@ -113,28 +128,35 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
 
         if (has_directed_ji) {
           if (i < j) {
-            # 1. Forward Edge (i -> j)
             edges_list[[edge_counter]] <- data.frame(
               from = i, to = j, arrows = "to", dashes = FALSE,
-              smooth = I(list(list(enabled = TRUE, type = "curvedCW", roundness = 0.25))),
+              smooth.enabled = TRUE, smooth.type = "curvedCW", smooth.roundness = 0.25,
               stringsAsFactors = FALSE
             )
             edge_counter <- edge_counter + 1
 
-            # 2. Backward Edge (j -> i)
             edges_list[[edge_counter]] <- data.frame(
-              from = i, to = j, arrows = "from", dashes = FALSE,
-              smooth = I(list(list(enabled = TRUE, type = "curvedCCW", roundness = 0.25))),
+              from = j, to = i, arrows = "to", dashes = FALSE,
+              smooth.enabled = TRUE, smooth.type = "curvedCW", smooth.roundness = 0.25,
               stringsAsFactors = FALSE
             )
             edge_counter <- edge_counter + 1
           }
         } else {
-          # Standard Single Directed Edge
-          smooth_config <- list(enabled = TRUE, type = "continuous", roundness = 0.0)
+          # Controlla se tra i due nodi c'è un arco bidirezionale (struttura bow)
+          val_str_ji <- sprintf("%03d", as.integer(ggm_matrix[j, i]))
+          has_bid_ji <- substr(val_str_ji, 1, 1) == "1"
+          has_und_ji <- substr(val_str_ji, 2, 2) == "1"
+
+          # Se coesiste con un arco non orientato, si curva. Se c'è un bidirezionale (bow), RESTA DRITTA!
+          is_multiple_with_undirected <- edge_count_matrix[i, j] > 1 && (has_und_ji || substr(val_str_ij, 2, 2) == "1")
+
+          current_type <- if (is_multiple_with_undirected) "curvedCW" else "continuous"
+          current_roundness <- if (is_multiple_with_undirected) 0.25 else 0.0
+
           edges_list[[edge_counter]] <- data.frame(
             from = i, to = j, arrows = "to", dashes = FALSE,
-            smooth = I(list(smooth_config)),
+            smooth.enabled = TRUE, smooth.type = current_type, smooth.roundness = current_roundness,
             stringsAsFactors = FALSE
           )
           edge_counter <- edge_counter + 1
@@ -143,9 +165,7 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
     }
   }
 
-  # -------------------------------------------------------------------
-  # PHASE 2: Extract SYMMETRIC EDGES (Undirected lines & Bidirected arrows)
-  # -------------------------------------------------------------------
+  # 5. ESTRAZIONE ARCHI SIMMETRICI
   for (i in 1:(n_nodes - 1)) {
     for (j in (i + 1):n_nodes) {
       cell_value <- ggm_matrix[i, j]
@@ -157,30 +177,24 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
 
       is_multiple <- edge_count_matrix[i, j] > 1
 
-      # --- Undirected Edge (i - j) ---
       if (has_undirected) {
-        smooth_config <- list(enabled = TRUE, type = "continuous", roundness = 0.0)
         edges_list[[edge_counter]] <- data.frame(
           from = i, to = j, arrows = "", dashes = FALSE,
-          smooth = I(list(smooth_config)),
+          smooth.enabled = TRUE, smooth.type = "continuous", smooth.roundness = 0.0,
           stringsAsFactors = FALSE
         )
         edge_counter <- edge_counter + 1
       }
-
-      # --- Bidirectional Edge (i <-> j) ---
+      # --- Arco Bidirezionale (i <-> j) ---
       if (has_bidirectional) {
-        if (is_multiple) {
-          smooth_config <- list(enabled = TRUE, type = "curvedCCW", roundness = bidirected_roundness)
-        } else {
-          smooth_config <- list(enabled = TRUE, type = "continuous", roundness = 0.0)
-        }
-
+        # Nel bow, is_multiple è TRUE, quindi userà curvedCCW
+        current_type <- if (is_multiple) "curvedCCW" else "continuous"
+        current_roundness <- if (is_multiple) bidirected_roundness else 0.0
         edges_list[[edge_counter]] <- data.frame(
           from = i, to = j,
           arrows = "to, from",
           dashes = dashed,
-          smooth = I(list(smooth_config)),
+          smooth.enabled = TRUE, smooth.type = current_type, smooth.roundness = current_roundness,
           stringsAsFactors = FALSE
         )
         edge_counter <- edge_counter + 1
@@ -191,21 +205,22 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
   if (length(edges_list) > 0) {
     edges_converted <- do.call(rbind, edges_list)
   } else {
-    edges_converted <- data.frame(from = integer(), to = integer(), arrows = character(), dashes = logical(), smooth = list())
+    edges_converted <- data.frame(
+      from = integer(), to = integer(), arrows = character(),
+      dashes = logical(), smooth.enabled = logical(),
+      smooth.type = character(), smooth.roundness = numeric(),
+      stringsAsFactors = FALSE
+    )
   }
-
-  # -------------------------------------------------------------------
-  # SHINY INTERFACE WITH DIRECT JAVASCRIPT CANVAS CAPTURE
-  # -------------------------------------------------------------------
-  ui <- fluidPage(
-    titlePanel("GGM Mixed Graph Layout Editor"),
-    sidebarLayout(
-      sidebarPanel(
-        p("1. Drag nodes with your mouse to define the layout."),
-        p("2. Multiple edge codes are correctly split and curved."),
-        br(),
-        # Questo pulsante è gestito direttamente da JavaScript (HTML5 Canvas) ed è visibile a sinistra
-        tags$button(
+  # 6. INTERFACCIA UTENTE SHINY (UI)
+  ui <- shiny::fluidPage(
+    shiny::titlePanel("GGM Mixed Graph Layout Editor"),
+    shiny::sidebarLayout(
+      shiny::sidebarPanel(
+        shiny::p("1. Drag nodes with your mouse to define the layout."),
+        shiny::p("2. Multiple edge codes are correctly split and curved."),
+        shiny::br(),
+        shiny::tags$button(
           id = "snap_btn",
           class = "btn btn-success",
           style = "width:100%; font-weight:bold;",
@@ -220,28 +235,35 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
               alert('Error: Canvas element not found yet. Try again in a second.');
             }
           ",
-          "📸 Download PNG Diagram"
+          "Download PNG Diagram"
         ),
-        br(), br(), br(),
-        actionButton("close_btn", "Terminate and Save Coordinates to R", class = "btn-danger", style = "width:100%")
+        shiny::br(), shiny::br(), shiny::br(),
+        shiny::actionButton("close_btn", "Close Editor and Save Layout", class = "btn-danger", style = "width:100%")
       ),
-      mainPanel(
-        visNetworkOutput("my_graph", height = "550px")
+      shiny::mainPanel(
+        visNetworkOutput("my_graph", height = "830px")
       )
     )
   )
 
+  # 7. LOGICA DEL SERVER SHINY
   server <- function(input, output, session) {
+
     output$my_graph <- renderVisNetwork({
-      visNetwork(nodes_converted, edges_converted) %>%
-        visNodes(physics = FALSE)
+      v <- visNetwork(nodes_converted, edges_converted)
+      v <- visNodes(v, physics = FALSE)
+      v$x$options$renderer <- "canvas"
+      v$x$options$configure <- list(enabled = FALSE)
+      v$x$options$rendering <- list(preserveDrawingBuffer = TRUE)
+      v
     })
 
-    observeEvent(input$close_btn, {
-      visNetworkProxy("my_graph") %>% visGetPositions()
+    shiny::observeEvent(input$close_btn, {
+      proxy <- visNetworkProxy("my_graph")
+      visGetPositions(proxy)
     })
 
-    observeEvent(input$my_graph_positions, {
+    shiny::observeEvent(input$my_graph_positions, {
       positions <- input$my_graph_positions
       ordered_ids <- nodes_converted$id
       coords_matrix <- matrix(0, nrow = length(ordered_ids), ncol = 2)
@@ -250,93 +272,36 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25) 
 
       for (i in seq_along(ordered_ids)) {
         current_id <- as.character(ordered_ids[i])
-        coords_matrix[i, "X"] <- positions[[current_id]]$x
-        coords_matrix[i, "Y"] <- -positions[[current_id]]$y
+        if (!is.null(positions[[current_id]])) {
+          coords_matrix[i, "X"] <- positions[[current_id]]$x
+          coords_matrix[i, "Y"] <- -positions[[current_id]]$y
+        }
       }
 
-      stopApp(coords_matrix)
+      shiny::stopApp(coords_matrix)
+    })
+
+    session$onSessionEnded(function() {
+      shiny::stopApp(matrix(numeric(0), nrow = 0, ncol = 2, dimnames = list(NULL, c("X", "Y"))))
     })
   }
 
-  runApp(shinyApp(ui = ui, server = server), launch.browser = interactive())
-}
-
-
-## Function SPl
-SPl <- function(a, b) {
-  (seq_along(a))[is.element(sort(a), b)]
-}
-## Function grMAT
-grMAT <- function(agr) {
-  # 1. Se è già una matrice o un data.frame con la codifica ggm, la puliamo e la restituiamo subito
-  if (is.matrix(agr) || is.data.frame(agr)) {
-    return(as.matrix(agr))
+  # 8. AVVIO DELL'APPLICAZIONE CON SCELTA DEL VIEWER
+  # Aumenta width e height (es. 1400x900) per dare più spazio al grafo
+  current_viewer <- if (Viewer == "Rstudio") {
+    shiny::dialogViewer("ggm Mixed Graph Layout Editor", width = 1100, height = 750)
+    # Usa il pannello integrato invece della finestra pop-up bloccata
+    # shiny::paneViewer(minHeight = 500)
+  } else {
+    shiny::browserViewer()
   }
-
-  # 2. Gestione oggetti graphNEL (Bioconductor)
-  if (inherits(agr, "graphNEL") || inherits(agr, "graph")) {
-    if (!requireNamespace("graph", quietly = TRUE)) {
-      stop("Package 'graph' (Bioconductor) is required to convert graphNEL objects.\n",
-           "It can be installed as: BiocManager::install('graph')", call. = FALSE)
-    }
-    return(as.matrix(methods::as(agr, "matrix")))
-  }
-
-  # 3. Gestione oggetti igraph
-  if (inherits(agr, "igraph")) {
-    return(as.matrix(igraph::as_adjacency_matrix(agr, sparse = FALSE)))
-  }
-
-  # 4. Gestione del vettore descrittivo (character vector)
-  if (is.character(agr)) {
-    if (length(agr) %% 3 != 0) {
-      stop("'The character object' is not in a valid form")
-    }
-
-    seqt <- seq(1, length(agr), 3)
-    b <- agr[seqt]
-    agrn <- agr[-seqt]
-    bn <- numeric(length(b))
-
-    for (i in 1:length(b)) {
-      if (b[i] != "a" && b[i] != "l" && b[i] != "b") {
-        stop("'The numeric object' is not in a valid form")
-      }
-      if (b[i] == "l")  bn[i] <- 10
-      if (b[i] == "a")  bn[i] <- 1
-      if (b[i] == "b")  bn[i] <- 100
-    }
-
-    Ragr <- unique(agrn)
-    ma <- length(Ragr)
-    mat <- matrix(0, ma, ma)
-
-    for (i in seq(1, length(agrn), 2)) {
-      idx_from <- SPl(Ragr, agrn[i])
-      idx_to   <- SPl(Ragr, agrn[i + 1])
-
-      if ((bn[(i + 1) / 2] == 1   && mat[idx_from, idx_to] %% 10 != 1) ||
-          (bn[(i + 1) / 2] == 10  && mat[idx_from, idx_to] %% 100 < 10) ||
-          (bn[(i + 1) / 2] == 100 && mat[idx_from, idx_to] < 100)) {
-
-        mat[idx_from, idx_to] <- mat[idx_from, idx_to] + bn[(i + 1) / 2]
-        if (bn[(i + 1) / 2] == 10 || bn[(i + 1) / 2] == 100) {
-          mat[idx_to, idx_from] <- mat[idx_to, idx_from] + bn[(i + 1) / 2]
-        }
-      }
-    }
-    rownames(mat) <- sort(Ragr)
-    colnames(mat) <- sort(Ragr)
-    return(mat)
-  }
-
-  stop("Input format not recognized by grMAT.")
+  shiny::runGadget(shinyApp(ui = ui, server = server), viewer = current_viewer)
 }
 
 
 #' Graph to adjacency matrix
 #'
-#' `grMAT` converts graph objects to a mixed adjacency matrix.
+#' `grMAT2` converts graph objects to a mixed adjacency matrix.
 #'
 #' @details Support for `graphNEL` objects requires the `graph` package
 #'   from Bioconductor, which is a suggested dependency.
@@ -374,34 +339,42 @@ grMAT <- function(agr) {
 #' exvec <- c(
 #'   "b", 1, 2, "b", 1, 14, "a", 9, 8, "l", 9, 11, "a", 10, 8,
 #'   "a", 11, 2, "a", 11, 10, "a", 12, 1, "b", 12, 14, "a", 13, 10, "a", 13, 12)
-#' grMAT(exvec)
+#' grMAT2(exvec)
 #'
 #' \dontrun{
 #' ## Example with graphNEL (requires the 'graph' package from Bioconductor)
 #' if (requireNamespace("graph", quietly = TRUE)) {
 #'   V <- c("a", "b", "c")
 #'   g <- graph::graphNEL(nodes = V, edgemode = "undirected")
-#'   grMAT(g)
+#'   grMAT2(g)
 #'  }
 #' }
 #'
 #' g <- c("a", 3, 1, "l", 1, 2, "*", 4, 4)
-#' grMAT(g)
+#' grMAT2(g)
+#' @importFrom igraph as_adjacency_matrix
 #' @export
-grMAT <- function(agr) {
-  # 1. Safe check for graphNEL objects (S4 compatible for Bioconductor)
-  if ("graphNEL" %in% class(agr) || inherits(agr, "graph")) {
-    if (!requireNamespace("graph", quietly = TRUE)) {
-      stop(
-        "Package 'graph' (Bioconductor) is required to convert graphNEL objects.\n",
-        "It can be installed using: BiocManager::install('graph')",
-        call. = FALSE
-      )
+grMAT2 <- function(agr) {
+    # 0. Controllo sicuro per matrici e array (se è già una matrice di adiacenza valida)
+    if (is.matrix(agr) || is.array(agr)) {
+      if (nrow(agr) != ncol(agr)) {
+        stop("La matrice di adiacenza deve essere quadrata.", call. = FALSE)
+      }
+      return(agr)
     }
-    agr <- methods::as(agr, "matrix")
-    return(agr)
-  }
 
+    # 1. Safe check for graphNEL objects (S4 compatible for Bioconductor)
+    if ("graphNEL" %in% class(agr) || inherits(agr, "graph")) {
+      if (!requireNamespace("graph", quietly = TRUE)) {
+        stop(
+          "Package 'graph' (Bioconductor) is required to convert graphNEL objects.\n",
+          "It can be installed using: BiocManager::install('graph')",
+          call. = FALSE
+        )
+      }
+      agr <- methods::as(agr, "matrix")
+      return(agr)
+    }
 
   # 2. Safe check for igraph objects (using direct namespace call)
   if (inherits(agr, "igraph")) {

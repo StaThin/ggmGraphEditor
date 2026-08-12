@@ -1,12 +1,26 @@
-Package: graphLayout
+Package: ggmGraphEditor
 Type: Package
 Title: Interactive Graph Layout Editor for Mixed Graphs
 Version: 0.1.0
-Authors@R:Authors@R: c(person(given = "Giovanni M.", family = "Marchetti", email = "giovanni.marchetti@unifi.it", role = c("aut", "cre"), comment = c(ORCID = "https://orcid.org/0000-0003-4413-9349")), person("Kayvan", "Sadeghi", email = "k.sadeghi@ucl.ac.uk", role = "aut", comment = c(ORCID = "https://orcid.org/0000-0001-7314-744X")))
-Imports: shiny visNetwork
-Description: Il package permette di rappresentare grafi misti a partire da una matrice di adiacenza definita da Sadeghi and Marchetti (2012).  
-License: License: GPL-2
+Authors@R: c(person(given = "Giovanni M.", family = "Marchetti", email = "giovanni.marchetti@unifi.it", role = c("aut", "cre"), comment = c(ORCID = "https://orcid.org/0000-0003-4413-9349")), person("Kayvan", "Sadeghi", email = "k.sadeghi@ucl.ac.uk", role = "aut", comment = c(ORCID = "https://orcid.org/0000-0001-7314-744X")))
+Depends:
+    R (>= 3.6.0)
+Imports:
+    methods,
+    visNetwork,
+    shiny,
+    igraph
+Suggests:
+    ggm (>= 2.5.5),
+    graph
+Description: Provides an interactive interface to plot and layout mixed graphs
+    based on the adjacency matrix defined by Sadeghi and Marchetti (2012)
+    Graphical Markov models with mixed graphs in R. The R Journal, 
+    <doi:10.32614/RJ-2012-015>. Uses 'shiny' and 'visNetwork' to allow dynamic
+    node repositioning and coordinate extraction.
+License: GPL-2
 Encoding: UTF-8
 LazyData: true
 NeedsCompilation: no
-Config/roxygen2/version: 8.0.0
+Config/roxygen2/version: 8.1.0
+Roxygen: list(markdown = TRUE)
