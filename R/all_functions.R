@@ -14,7 +14,7 @@
 #' are drawn as dashed lines.
 #' @param bidirected_roundness Numeric. Curvature of bidirected edges
 #' when multiple edges are present. Default is `0.25`.
-#' @param Viewer, character string specifying where to display the
+#' @param Viewer character string specifying where to display the
 #'  Shiny application.  Valid options are `"Rstudio"` (to open it
 #'  in a native internal window), or `"browser"` (to open it
 #'  in the default web browser). If not specified, it
@@ -26,41 +26,39 @@
 #' @importFrom shiny fluidPage sidebarLayout sidebarPanel mainPanel titlePanel p br tags actionButton observeEvent stopApp runApp shinyApp
 #' @importFrom visNetwork visNetworkOutput renderVisNetwork visNetwork visNodes visNetworkProxy visGetPositions visEdges
 #'
-#'@author Giovanni M. Marchetti in collaboration with
-#'Google Gemini AI (2026).
+#'@author Giovanni M. Marchetti
+#'@note The author acknowledges the help of Google Gemini AI (2026).
 #' @examples
-#' \dontrun{
 #' if (interactive()) {
 #'   amat <- matrix(c(0,1,0, 0,0,1, 0,0,0), 3, 3,
 #'                  dimnames = list(c("A","B","C"), c("A","B","C")))
 #'   coords <- graphLayout(amat)
 #'   print(coords)
-#' }
 #'
-#' # Generating the adjacency matrix from a vector and plotting
-#' exvec <- c(
-#'   "b", 1, 2, "b", 1, 14, "a", 9, 8, "l", 9, 11,
-#'   "a", 10, 8, "a", 11, 2, "a", 11, 9, "a", 11, 10,
-#'   "a", 12, 1, "b", 12, 14, "a", 13, 10, "a", 13, 12
-#' )
-#' graphLayout(exvec)
+#'   # Generating the adjacency matrix from a vector and plotting
+#'   exvec <- c(
+#'     "b", 1, 2, "b", 1, 14, "a", 9, 8, "l", 9, 11,
+#'     "a", 10, 8, "a", 11, 2, "a", 11, 9, "a", 11, 10,
+#'     "a", 12, 1, "b", 12, 14, "a", 13, 10, "a", 13, 12
+#'   )
+#'   graphLayout(exvec)
 #'
-#' # Plotting from a direct adjacency matrix
-#' amat <- matrix(c(0, 11, 0, 0, 10, 0, 100, 0, 0, 100, 0, 1, 0, 0, 1, 0), 4, 4)
-#' graphLayout(amat)
+#'   # Plotting from a direct adjacency matrix
+#'   amat2 <- matrix(c(0, 11, 0, 0, 10, 0, 100, 0, 0, 100, 0, 1, 0, 0, 1, 0), 4, 4)
+#'   graphLayout(amat2)
 #'
-#' # A graph with double and triple edges
-#' G <- structure(c(
-#'     0, 101, 0, 0, 100, 0, 100, 100, 0, 100, 0, 100, 0, 111, 100, 0),
-#'      dim = c(4L, 4L),
-#'      dimnames = list(c("X", "Z", "Y", "W"), c("X", "Z", "Y", "W")))
-#' graphLayout(G)
+#'   # A graph with double and triple edges
+#'   G <- structure(c(
+#'       0, 101, 0, 0, 100, 0, 100, 100, 0, 100, 0, 100, 0, 111, 100, 0),
+#'        dim = c(4L, 4L),
+#'        dimnames = list(c("X", "Z", "Y", "W"), c("X", "Z", "Y", "W")))
+#'   graphLayout(G)
 #'
-#' # A graph with 4 edges between two nodes
-#' G4 <- matrix(0, 2, 2)
-#' G4[1, 2] <- 111
-#' G4[2, 1] <- 111
-#' graphLayout(G4)
+#'   # A graph with 4 edges between two nodes
+#'   G4 <- matrix(0, 2, 2)
+#'   G4[1, 2] <- 111
+#'   G4[2, 1] <- 111
+#'   graphLayout(G4)
 #' }
 #' @export
 
@@ -341,13 +339,11 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, 
 #'   "a", 11, 2, "a", 11, 10, "a", 12, 1, "b", 12, 14, "a", 13, 10, "a", 13, 12)
 #' grMAT2(exvec)
 #'
-#' \dontrun{
 #' ## Example with graphNEL (requires the 'graph' package from Bioconductor)
 #' if (requireNamespace("graph", quietly = TRUE)) {
 #'   V <- c("a", "b", "c")
 #'   g <- graph::graphNEL(nodes = V, edgemode = "undirected")
 #'   grMAT2(g)
-#'  }
 #' }
 #'
 #' g <- c("a", 3, 1, "l", 1, 2, "*", 4, 4)

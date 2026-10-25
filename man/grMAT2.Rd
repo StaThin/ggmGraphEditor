@@ -53,13 +53,11 @@ exvec <- c(
   "a", 11, 2, "a", 11, 10, "a", 12, 1, "b", 12, 14, "a", 13, 10, "a", 13, 12)
 grMAT2(exvec)
 
-\dontrun{
 ## Example with graphNEL (requires the 'graph' package from Bioconductor)
 if (requireNamespace("graph", quietly = TRUE)) {
   V <- c("a", "b", "c")
   g <- graph::graphNEL(nodes = V, edgemode = "undirected")
   grMAT2(g)
- }
 }
 
 g <- c("a", 3, 1, "l", 1, 2, "*", 4, 4)

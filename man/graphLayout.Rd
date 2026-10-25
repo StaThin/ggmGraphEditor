@@ -24,7 +24,7 @@ are drawn as dashed lines.}
 \item{bidirected_roundness}{Numeric. Curvature of bidirected edges
 when multiple edges are present. Default is \code{0.25}.}
 
-\item{Viewer, }{character string specifying where to display the
+\item{Viewer}{character string specifying where to display the
 Shiny application.  Valid options are \code{"Rstudio"} (to open it
 in a native internal window), or \code{"browser"} (to open it
 in the default web browser). If not specified, it
@@ -41,42 +41,42 @@ An interactive replacement for \link[ggm:plotGraph]{ggm::plotGraph} using
 Allows dynamic node repositioning, handles multiple edge types,
 and outputs node coordinates.
 }
+\note{
+The author acknowledges the help of Google Gemini AI (2026).
+}
 \examples{
-\dontrun{
 if (interactive()) {
   amat <- matrix(c(0,1,0, 0,0,1, 0,0,0), 3, 3,
                  dimnames = list(c("A","B","C"), c("A","B","C")))
   coords <- graphLayout(amat)
   print(coords)
-}
 
-# Generating the adjacency matrix from a vector and plotting
-exvec <- c(
-  "b", 1, 2, "b", 1, 14, "a", 9, 8, "l", 9, 11,
-  "a", 10, 8, "a", 11, 2, "a", 11, 9, "a", 11, 10,
-  "a", 12, 1, "b", 12, 14, "a", 13, 10, "a", 13, 12
-)
-graphLayout(exvec)
+  # Generating the adjacency matrix from a vector and plotting
+  exvec <- c(
+    "b", 1, 2, "b", 1, 14, "a", 9, 8, "l", 9, 11,
+    "a", 10, 8, "a", 11, 2, "a", 11, 9, "a", 11, 10,
+    "a", 12, 1, "b", 12, 14, "a", 13, 10, "a", 13, 12
+  )
+  graphLayout(exvec)
 
-# Plotting from a direct adjacency matrix
-amat <- matrix(c(0, 11, 0, 0, 10, 0, 100, 0, 0, 100, 0, 1, 0, 0, 1, 0), 4, 4)
-graphLayout(amat)
+  # Plotting from a direct adjacency matrix
+  amat2 <- matrix(c(0, 11, 0, 0, 10, 0, 100, 0, 0, 100, 0, 1, 0, 0, 1, 0), 4, 4)
+  graphLayout(amat2)
 
-# A graph with double and triple edges
-G <- structure(c(
-    0, 101, 0, 0, 100, 0, 100, 100, 0, 100, 0, 100, 0, 111, 100, 0),
-     dim = c(4L, 4L),
-     dimnames = list(c("X", "Z", "Y", "W"), c("X", "Z", "Y", "W")))
-graphLayout(G)
+  # A graph with double and triple edges
+  G <- structure(c(
+      0, 101, 0, 0, 100, 0, 100, 100, 0, 100, 0, 100, 0, 111, 100, 0),
+       dim = c(4L, 4L),
+       dimnames = list(c("X", "Z", "Y", "W"), c("X", "Z", "Y", "W")))
+  graphLayout(G)
 
-# A graph with 4 edges between two nodes
-G4 <- matrix(0, 2, 2)
-G4[1, 2] <- 111
-G4[2, 1] <- 111
-graphLayout(G4)
+  # A graph with 4 edges between two nodes
+  G4 <- matrix(0, 2, 2)
+  G4[1, 2] <- 111
+  G4[2, 1] <- 111
+  graphLayout(G4)
 }
 }
 \author{
-Giovanni M. Marchetti in collaboration with
-Google Gemini AI (2026).
+Giovanni M. Marchetti
 }

@@ -12,16 +12,18 @@ Imports:
     igraph
 Suggests:
     ggm (>= 2.5.5),
-    graph
+    graph,
+    testthat (>= 3.0.0)
 Description: Provides an interactive interface to plot and layout mixed
-    graphs based on the adjacency matrix defined by Sadeghi and 
-    Marchetti (2012). Graphical Markov models with mixed graphs in R. 
-    The R Journal, <doi:10.32614/RJ-2012-015>. Uses 'shiny' and
+    graphs based on the adjacency matrix defined in Sadeghi and
+    Marchetti (2012) <doi:10.32614/RJ-2012-015>. Uses 'shiny' and
     'visNetwork' to allow dynamic node repositioning and coordinate
     extraction.
 License: GPL-2
 Encoding: UTF-8
-LazyData: true
+URL: https://github.com/StaThin/ggmGraphEditor
+BugReports: https://github.com/StaThin/ggmGraphEditor/issues
 NeedsCompilation: no
 Config/roxygen2/version: 8.1.0
 Roxygen: list(markdown = TRUE)
+Config/testthat/edition: 3
