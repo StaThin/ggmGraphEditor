@@ -20,6 +20,15 @@
 #'  in the default web browser). If not specified, it
 #'  automatically detects the environment, defaulting to`"Rstudio"`
 #'  inside RStudio and `"browser"` elsewhere.
+#' @param coords Optional initial node positions. Either a numeric matrix
+#'  with one row per node (in the order of the adjacency matrix) and two
+#'  columns (`x`, `y`), or a function such as [igraph::layout_nicely()]
+#'  that takes an `igraph` graph and returns such a matrix. The graph passed
+#'  to the function has the same nodes and adjacencies as the mixed graph
+#'  (edge types are ignored). The positions are enlarged internally to fit
+#'  the display, but the returned coordinates are in the same units as
+#'  `coords`. If `NULL` (default), `visNetwork` chooses the initial
+#'  positions and the returned coordinates are in display (pixel) units.
 #' @return A matrix of `X` and `Y` coordinates for each node,
 #' returned after terminating the Shiny application.
 #'
@@ -59,10 +68,15 @@
 #'   G4[1, 2] <- 111
 #'   G4[2, 1] <- 111
 #'   graphLayout(G4)
+#'
+#'   # Starting from an igraph layout
+#'   graphLayout(G, coords = igraph::layout_nicely)
+#'   xy <- matrix(c(0, 1, 1, 0, 0, 0, 1, 1), 4, 2)
+#'   graphLayout(G, coords = xy)
 #' }
 #' @export
 
-graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, Viewer = if (Sys.getenv("RSTUDIO") == "1") "Rstudio" else "browser") {
+graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, Viewer = if (Sys.getenv("RSTUDIO") == "1") "Rstudio" else "browser", coords = NULL) {
   # 0. CONTROLLO DI SICUREZZA SULL'INPUT DEL VIEWER
   # Il controllo accetta solo queste due opzioni e gestisce le abbreviazioni
   Viewer <- match.arg(Viewer, choices = c("Rstudio", "browser"))
@@ -85,6 +99,15 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, 
     color = "#97C2FC",
     stringsAsFactors = FALSE
   )
+
+  init <- resolve_coords(coords, ggm_matrix)
+  # Factor used to display `coords` at pixel scale; undone on output
+  coord_scale <- init$scale
+  if (!is.null(init$xy)) {
+    nodes_converted$x <- init$xy[, 1] * coord_scale
+    # visNetwork's y axis points down; the returned coordinates are flipped back
+    nodes_converted$y <- -init$xy[, 2] * coord_scale
+  }
 
   edges_list <- list()
   edge_counter <- 1
@@ -271,8 +294,8 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, 
       for (i in seq_along(ordered_ids)) {
         current_id <- as.character(ordered_ids[i])
         if (!is.null(positions[[current_id]])) {
-          coords_matrix[i, "X"] <- positions[[current_id]]$x
-          coords_matrix[i, "Y"] <- -positions[[current_id]]$y
+          coords_matrix[i, "X"] <- positions[[current_id]]$x / coord_scale
+          coords_matrix[i, "Y"] <- -positions[[current_id]]$y / coord_scale
         }
       }
 
@@ -296,6 +319,36 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, 
   shiny::runGadget(shinyApp(ui = ui, server = server), viewer = current_viewer)
 }
 
+
+# Validate `coords` and return list(xy, scale): `xy` is the n x 2 matrix
+# (original units) or NULL, and `scale` the factor that maps it to a
+# display size of about `half_width` pixels (1 when `coords` is NULL).
+resolve_coords <- function(coords, adj, half_width = 300) {
+  if (is.null(coords)) return(list(xy = NULL, scale = 1))
+  n <- nrow(adj)
+
+  if (is.function(coords)) {
+    g <- igraph::graph_from_adjacency_matrix(
+      +(adj != 0), mode = "max", diag = FALSE
+    )
+    coords <- coords(g)
+  }
+
+  coords <- tryCatch(as.matrix(coords), error = function(e) NULL)
+  if (is.null(coords) || !is.numeric(coords) ||
+      !identical(dim(coords), c(n, 2L))) {
+    stop("'coords' must be a numeric matrix with ", n,
+         " rows (one per node) and 2 columns, or a function returning one.",
+         call. = FALSE)
+  }
+  if (any(!is.finite(coords))) {
+    stop("'coords' must not contain missing or infinite values.",
+         call. = FALSE)
+  }
+
+  m <- max(abs(coords))
+  list(xy = unname(coords), scale = if (m > 0) half_width / m else 1)
+}
 
 #' Graph to adjacency matrix
 #'

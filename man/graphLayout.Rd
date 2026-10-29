@@ -8,7 +8,8 @@ graphLayout(
   ggm_matrix,
   dashed = TRUE,
   bidirected_roundness = 0.25,
-  Viewer = if (Sys.getenv("RSTUDIO") == "1") "Rstudio" else "browser"
+  Viewer = if (Sys.getenv("RSTUDIO") == "1") "Rstudio" else "browser",
+  coords = NULL
 )
 }
 \arguments{
@@ -30,6 +31,16 @@ in a native internal window), or \code{"browser"} (to open it
 in the default web browser). If not specified, it
 automatically detects the environment, defaulting to\code{"Rstudio"}
 inside RStudio and \code{"browser"} elsewhere.}
+
+\item{coords}{Optional initial node positions. Either a numeric matrix
+with one row per node (in the order of the adjacency matrix) and two
+columns (\code{x}, \code{y}), or a function such as \code{\link[igraph:layout_nicely]{igraph::layout_nicely()}}
+that takes an \code{igraph} graph and returns such a matrix. The graph passed
+to the function has the same nodes and adjacencies as the mixed graph
+(edge types are ignored). The positions are enlarged internally to fit
+the display, but the returned coordinates are in the same units as
+\code{coords}. If \code{NULL} (default), \code{visNetwork} chooses the initial
+positions and the returned coordinates are in display (pixel) units.}
 }
 \value{
 A matrix of \code{X} and \code{Y} coordinates for each node,
@@ -75,6 +86,11 @@ if (interactive()) {
   G4[1, 2] <- 111
   G4[2, 1] <- 111
   graphLayout(G4)
+
+  # Starting from an igraph layout
+  graphLayout(G, coords = igraph::layout_nicely)
+  xy <- matrix(c(0, 1, 1, 0, 0, 0, 1, 1), 4, 2)
+  graphLayout(G, coords = xy)
 }
 }
 \author{
