@@ -22,13 +22,21 @@
 #'  inside RStudio and `"browser"` elsewhere.
 #' @param coords Optional initial node positions. Either a numeric matrix
 #'  with one row per node (in the order of the adjacency matrix) and two
-#'  columns (`x`, `y`), or a function such as [igraph::layout_nicely()]
-#'  that takes an `igraph` graph and returns such a matrix. The graph passed
-#'  to the function has the same nodes and adjacencies as the mixed graph
-#'  (edge types are ignored). The positions are enlarged internally to fit
+#'  columns (`x`, `y`), a function such as [igraph::layout_nicely()]
+#'  that takes an `igraph` graph and returns such a matrix, or one of the
+#'  strings `"TB"`, `"BT"`, `"LR"`, `"RL"`. The graph passed to a function
+#'  has the same nodes and adjacencies as the mixed graph (edge types are
+#'  ignored). The strings request a layered layout
+#'  ([igraph::layout_with_sugiyama()]) computed on the directed edges only,
+#'  in the spirit of the `rankdir` option of GraphViz: arrows point from top
+#'  to bottom (`"TB"`), bottom to top (`"BT"`), left to right (`"LR"`) or
+#'  right to left (`"RL"`). Undirected and bi-directed edges do not
+#'  contribute to the layering, so these layouts are most useful for graphs
+#'  with many arrows. The positions are enlarged internally to fit
 #'  the display, but the returned coordinates are in the same units as
-#'  `coords`. If `NULL` (default), `visNetwork` chooses the initial
-#'  positions and the returned coordinates are in display (pixel) units.
+#'  `coords` (for the strings, one unit between consecutive layers). If
+#'  `NULL` (default), `visNetwork` chooses the initial positions and the
+#'  returned coordinates are in display (pixel) units.
 #' @return A matrix of `X` and `Y` coordinates for each node,
 #' returned after terminating the Shiny application.
 #'
@@ -71,6 +79,13 @@
 #'
 #'   # Starting from an igraph layout
 #'   graphLayout(G, coords = igraph::layout_nicely)
+#'
+#'   # Layered layouts (as rankdir in GraphViz), best for graphs with
+#'   # many arrows
+#'   dag <- c("a", "A", "C", "a", "B", "C", "a", "C", "D",
+#'            "a", "C", "E", "a", "D", "F", "a", "E", "F", "a", "B", "E")
+#'   graphLayout(dag, coords = "TB")
+#'   graphLayout(dag, coords = "LR")
 #'   xy <- matrix(c(0, 1, 1, 0, 0, 0, 1, 1), 4, 2)
 #'   graphLayout(G, coords = xy)
 #' }
@@ -235,36 +250,31 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, 
   }
   # 6. INTERFACCIA UTENTE SHINY (UI)
   ui <- shiny::fluidPage(
-    shiny::titlePanel("GGM Mixed Graph Layout Editor"),
-    shiny::sidebarLayout(
-      shiny::sidebarPanel(
-        shiny::p("1. Drag nodes with your mouse to define the layout."),
-        shiny::p("2. Multiple edge codes are correctly split and curved."),
-        shiny::br(),
-        shiny::tags$button(
-          id = "snap_btn",
-          class = "btn btn-success",
-          style = "width:100%; font-weight:bold;",
-          onclick = "
-            var canvas = document.querySelector('#my_graph canvas');
-            if(canvas) {
-              var link = document.createElement('a');
-              link.download = 'ggm_graph_layout.png';
-              link.href = canvas.toDataURL('image/png');
-              link.click();
-            } else {
-              alert('Error: Canvas element not found yet. Try again in a second.');
-            }
-          ",
-          "Download PNG Diagram"
-        ),
-        shiny::br(), shiny::br(), shiny::br(),
-        shiny::actionButton("close_btn", "Close Editor and Save Layout", class = "btn-danger", style = "width:100%")
+    title = "ggm Mixed Graph Layout Editor",
+    shiny::tags$head(shiny::tags$style(".container-fluid { padding: 4px; }")),
+    # Slim toolbar on top; the graph takes the rest of the window
+    shiny::div(
+      style = "display: flex; gap: 6px; padding-bottom: 4px;",
+      shiny::actionButton("fit_btn", "Fit", class = "btn-sm btn-default"),
+      shiny::tags$button(
+        id = "snap_btn",
+        class = "btn btn-sm btn-success",
+        onclick = "
+          var canvas = document.querySelector('#my_graph canvas');
+          if(canvas) {
+            var link = document.createElement('a');
+            link.download = 'ggm_graph_layout.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+          } else {
+            alert('Error: Canvas element not found yet. Try again in a second.');
+          }
+        ",
+        "Download PNG"
       ),
-      shiny::mainPanel(
-        visNetworkOutput("my_graph", height = "830px")
-      )
-    )
+      shiny::actionButton("close_btn", "Close and save layout", class = "btn-sm btn-danger")
+    ),
+    visNetworkOutput("my_graph", height = "calc(100vh - 48px)")
   )
 
   # 7. LOGICA DEL SERVER SHINY
@@ -273,10 +283,15 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, 
     output$my_graph <- renderVisNetwork({
       v <- visNetwork(nodes_converted, edges_converted)
       v <- visNodes(v, physics = FALSE)
+      v <- visNetwork::visInteraction(v, zoomSpeed = 0.1)
       v$x$options$renderer <- "canvas"
       v$x$options$configure <- list(enabled = FALSE)
       v$x$options$rendering <- list(preserveDrawingBuffer = TRUE)
       v
+    })
+
+    shiny::observeEvent(input$fit_btn, {
+      visNetwork::visFit(visNetworkProxy("my_graph"))
     })
 
     shiny::observeEvent(input$close_btn, {
@@ -310,7 +325,7 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, 
   # 8. AVVIO DELL'APPLICAZIONE CON SCELTA DEL VIEWER
   # Aumenta width e height (es. 1400x900) per dare più spazio al grafo
   current_viewer <- if (Viewer == "Rstudio") {
-    shiny::dialogViewer("ggm Mixed Graph Layout Editor", width = 1100, height = 750)
+    shiny::dialogViewer("ggm Mixed Graph Layout Editor", width = 1100, height = 850)
     # Usa il pannello integrato invece della finestra pop-up bloccata
     # shiny::paneViewer(minHeight = 500)
   } else {
@@ -320,6 +335,32 @@ graphLayout <- function(ggm_matrix, dashed = TRUE, bidirected_roundness = 0.25, 
 }
 
 
+# Layered (Sugiyama) layout based on the directed edges only: arrows point
+# from the first layer to the last. `rankdir` as in GraphViz: "TB" puts
+# sources on top, "BT" at the bottom, "LR" on the left, "RL" on the right.
+# Returns an n x 2 matrix (y axis pointing up).
+layered_layout <- function(adj, rankdir) {
+  directed <- (adj %% 10) == 1
+  diag(directed) <- FALSE
+  g <- igraph::graph_from_adjacency_matrix(+directed, mode = "directed")
+  lay <- igraph::layout_with_sugiyama(g)$layout
+  pos <- lay[, 1]
+  lev <- lay[, 2]
+
+  # igraph's orientation of the layer axis is not guaranteed: make arrows
+  # point towards increasing `lev`
+  ed <- which(directed, arr.ind = TRUE)
+  if (nrow(ed) > 0 && mean(lev[ed[, 2]] - lev[ed[, 1]]) < 0) lev <- -lev
+
+  xy <- switch(rankdir,
+    TB = cbind(pos, -lev),
+    BT = cbind(pos, lev),
+    LR = cbind(lev, -pos),
+    RL = cbind(-lev, -pos)
+  )
+  unname(xy)
+}
+
 # Validate `coords` and return list(xy, scale): `xy` is the n x 2 matrix
 # (original units) or NULL, and `scale` the factor that maps it to a
 # display size of about `half_width` pixels (1 when `coords` is NULL).
@@ -327,7 +368,14 @@ resolve_coords <- function(coords, adj, half_width = 300) {
   if (is.null(coords)) return(list(xy = NULL, scale = 1))
   n <- nrow(adj)
 
-  if (is.function(coords)) {
+  if (is.character(coords) && is.null(dim(coords))) {
+    if (length(coords) != 1L || !coords %in% c("TB", "BT", "LR", "RL")) {
+      stop("'coords' must be a numeric matrix with ", n,
+           " rows and 2 columns, a layout function, or one of ",
+           "\"TB\", \"BT\", \"LR\", \"RL\".", call. = FALSE)
+    }
+    coords <- layered_layout(adj, coords)
+  } else if (is.function(coords)) {
     g <- igraph::graph_from_adjacency_matrix(
       +(adj != 0), mode = "max", diag = FALSE
     )
@@ -338,8 +386,8 @@ resolve_coords <- function(coords, adj, half_width = 300) {
   if (is.null(coords) || !is.numeric(coords) ||
       !identical(dim(coords), c(n, 2L))) {
     stop("'coords' must be a numeric matrix with ", n,
-         " rows (one per node) and 2 columns, or a function returning one.",
-         call. = FALSE)
+         " rows (one per node) and 2 columns, a layout function, or one of ",
+         "\"TB\", \"BT\", \"LR\", \"RL\".", call. = FALSE)
   }
   if (any(!is.finite(coords))) {
     stop("'coords' must not contain missing or infinite values.",

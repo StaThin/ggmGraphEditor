@@ -45,3 +45,39 @@ test_that("resolve_coords keeps original units and returns a display scale", {
   # degenerate layout (all nodes at the same point) does not divide by zero
   expect_equal(resolve_coords(matrix(0, 3, 2), adj)$scale, 1)
 })
+
+test_that("layered layouts orient the arrows as requested", {
+  adj <- grMAT2(c("a", 1, 2, "a", 2, 3, "a", 1, 3))
+  get <- function(dir) resolve_coords(dir, adj)$xy
+
+  tb <- get("TB")
+  expect_equal(dim(tb), c(3, 2))
+  expect_true(all(diff(tb[, 2]) < 0))   # arrows point downwards
+
+  bt <- get("BT")
+  expect_true(all(diff(bt[, 2]) > 0))
+
+  lr <- get("LR")
+  expect_true(all(diff(lr[, 1]) > 0))   # arrows point to the right
+
+  rl <- get("RL")
+  expect_true(all(diff(rl[, 1]) < 0))
+})
+
+test_that("layered layouts use directed edges only and cope with cycles", {
+  # only undirected and bi-directed edges: a single layer
+  adj <- grMAT2(c("l", 1, 2, "b", 2, 3))
+  expect_equal(length(unique(resolve_coords("TB", adj)$xy[, 2])), 1)
+
+  # isolated node and a directed 2-cycle
+  adj2 <- grMAT2(c("a", 1, 2, "a", 2, 1, "*", 3, 3))
+  expect_equal(dim(resolve_coords("LR", adj2)$xy), c(3, 2))
+})
+
+test_that("invalid direction strings are rejected", {
+  adj <- grMAT2(c("a", 1, 2))
+  expect_error(resolve_coords("XX", adj), "'coords' must be")
+  expect_error(resolve_coords(c("TB", "LR"), adj), "'coords' must be")
+  expect_error(graphLayout(adj, coords = "up", Viewer = "browser"),
+               "'coords' must be")
+})
