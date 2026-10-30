@@ -61,7 +61,8 @@ Allows dynamic node repositioning, handles multiple edge types,
 and outputs node coordinates.
 }
 \note{
-The author acknowledges the help of Google Gemini AI (2026).
+The author acknowledges the help of Google Gemini AI (2026) and
+Posit Assistant (2026).
 }
 \examples{
 if (interactive()) {

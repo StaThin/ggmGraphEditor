@@ -44,7 +44,8 @@
 #' @importFrom visNetwork visNetworkOutput renderVisNetwork visNetwork visNodes visNetworkProxy visGetPositions visEdges
 #'
 #'@author Giovanni M. Marchetti
-#'@note The author acknowledges the help of Google Gemini AI (2026).
+#'@note The author acknowledges the help of Google Gemini AI (2026) and
+#'Posit Assistant (2026).
 #' @examples
 #' if (interactive()) {
 #'   amat <- matrix(c(0,1,0, 0,0,1, 0,0,0), 3, 3,
